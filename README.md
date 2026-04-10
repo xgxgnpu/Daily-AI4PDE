@@ -6,6 +6,17 @@
 
 [中文](#中文) | [English](#english)
 
+## 作者 / Author
+
+**熊雄 (Xiong Xiong)**
+
+- 西北工业大学 / Northwestern Polytechnical University (NWPU)
+- 研究方向 / Research: AI4PDE, Physics-Informed Deep Learning, Data-Driven Discovery
+- Email: xiongxiongnwpu@mail.nwpu.edu.cn
+- [Google Scholar](https://scholar.google.com/citations?user=j1M9tkwAAAAJ&hl=zh-CN&oi=sra)
+- [ResearchGate](https://www.researchgate.net/profile/Xiong-Xiong-19?ev=hdr_xprf)
+- [Physics-informed-vibe-coding](https://github.com/xgxgnpu/Physics-informed-vibe-coding) — 首个 PINN Vibe Coding 开源仓库 / The first open-source PINN Vibe Coding repository with JAX-GPU implementations
+
 ---
 
 ## 中文
