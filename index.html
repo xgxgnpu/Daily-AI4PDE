@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daily-AI4PDE — 神经网络求解PDE文献追踪系统</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  line-height: 1.6; color: #24292f; background: #f6f8fa;
+}
+@media (prefers-color-scheme: dark) {
+  body { color: #c9d1d9; background: #0d1117; }
+  .card { background: #161b22; border-color: #30363d; }
+  .card:hover { border-color: #58a6ff; box-shadow: 0 4px 16px rgba(88,166,255,.15); }
+  .card-header { background: #21262d; border-color: #30363d; }
+  .hero { background: linear-gradient(135deg, #161b22 0%, #0d1117 100%); border-color: #30363d; }
+  .tag { background: #21262d; color: #58a6ff; }
+  .stat-box { background: #21262d; border-color: #30363d; }
+  .tab-btn { background: #21262d; color: #c9d1d9; border-color: #30363d; }
+  .tab-btn.active { background: #1f6feb; color: #fff; border-color: #1f6feb; }
+  .section-title { color: #58a6ff; border-color: #30363d; }
+  .tree-block { background: #161b22; border-color: #30363d; }
+  pre { background: #161b22; }
+  footer { background: #161b22; border-color: #30363d; }
+}
+a { color: #0969da; text-decoration: none; }
+a:hover { text-decoration: underline; }
+@media (prefers-color-scheme: dark) { a { color: #58a6ff; } }
+
+.container { max-width: 1100px; margin: 0 auto; padding: 24px 20px; }
+
+/* Hero */
+.hero {
+  background: linear-gradient(135deg, #fff 0%, #f0f7ff 100%);
+  border: 1px solid #d0d7de; border-radius: 12px;
+  padding: 36px 40px; margin-bottom: 32px;
+}
+.hero h1 { font-size: 1.9em; margin-bottom: 10px; }
+.hero h1 span { color: #0969da; }
+.hero .desc { color: #57606a; font-size: 1.05em; margin-bottom: 18px; }
+@media (prefers-color-scheme: dark) { .hero .desc { color: #8b949e; } }
+.hero-meta { display: flex; gap: 24px; flex-wrap: wrap; font-size: .9em; color: #57606a; }
+@media (prefers-color-scheme: dark) { .hero-meta { color: #8b949e; } }
+
+/* Tabs */
+.tabs { display: flex; gap: 8px; margin-bottom: 24px; }
+.tab-btn {
+  padding: 8px 28px; border: 1px solid #d0d7de; border-radius: 6px;
+  background: #fff; cursor: pointer; font-size: 14px; font-weight: 600;
+  transition: all .2s;
+}
+.tab-btn.active { background: #0969da; color: #fff; border-color: #0969da; }
+.tab-btn:hover:not(.active) { background: #f3f4f6; }
+.section { display: none; }
+.section.active { display: block; }
+
+/* Stats */
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px,1fr)); gap: 12px; margin-bottom: 28px; }
+.stat-box {
+  background: #fff; border: 1px solid #d0d7de; border-radius: 8px;
+  padding: 14px 16px; text-align: center;
+}
+.stat-box .num { font-size: 1.8em; font-weight: 700; color: #0969da; }
+.stat-box .label { font-size: .82em; color: #57606a; margin-top: 2px; }
+@media (prefers-color-scheme: dark) { .stat-box .label { color: #8b949e; } }
+
+/* Section title */
+.section-title {
+  font-size: 1.15em; font-weight: 700; color: #0969da;
+  border-bottom: 2px solid #d0d7de; padding-bottom: 8px; margin: 28px 0 16px;
+}
+
+/* Cards grid */
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px,1fr)); gap: 16px; margin-bottom: 28px; }
+.card {
+  background: #fff; border: 1px solid #d0d7de; border-radius: 10px;
+  overflow: hidden; transition: box-shadow .2s, border-color .2s;
+}
+.card:hover { box-shadow: 0 4px 16px rgba(9,105,218,.12); border-color: #0969da; }
+.card-header {
+  background: #f6f8fa; border-bottom: 1px solid #d0d7de;
+  padding: 12px 16px; display: flex; align-items: center; gap: 10px;
+}
+.card-header .icon { font-size: 1.3em; }
+.card-header .repo-name { font-weight: 700; font-size: .95em; }
+.card-body { padding: 14px 16px; }
+.card-body .summary { font-size: .88em; color: #57606a; margin-bottom: 10px; }
+@media (prefers-color-scheme: dark) { .card-body .summary { color: #8b949e; } }
+.card-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.tag {
+  background: #ddf4ff; color: #0969da; font-size: .75em;
+  padding: 2px 8px; border-radius: 12px; font-weight: 500;
+}
+.card-links { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn {
+  padding: 5px 12px; border-radius: 6px; font-size: .82em; font-weight: 600;
+  border: 1px solid; cursor: pointer; transition: all .15s; white-space: nowrap;
+}
+.btn-primary { background: #0969da; color: #fff; border-color: #0969da; }
+.btn-primary:hover { background: #0756b6; text-decoration: none; }
+.btn-outline { background: transparent; color: #0969da; border-color: #0969da; }
+.btn-outline:hover { background: #ddf4ff; text-decoration: none; }
+@media (prefers-color-scheme: dark) {
+  .btn-primary { background: #1f6feb; border-color: #1f6feb; }
+  .btn-primary:hover { background: #388bfd; }
+  .btn-outline { color: #58a6ff; border-color: #58a6ff; }
+  .btn-outline:hover { background: rgba(88,166,255,.1); }
+}
+
+/* Tree */
+.tree-block {
+  background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 8px;
+  padding: 16px 20px; margin-bottom: 20px;
+}
+pre { font-family: "SFMono-Regular", Consolas, monospace; font-size: .85em; white-space: pre; overflow-x: auto; }
+
+/* Author */
+.author-card {
+  background: #fff; border: 1px solid #d0d7de; border-radius: 10px;
+  padding: 20px 24px; margin-bottom: 20px;
+}
+@media (prefers-color-scheme: dark) { .author-card { background: #161b22; border-color: #30363d; } }
+.author-card h3 { margin-bottom: 8px; }
+.author-card ul { list-style: none; padding: 0; }
+.author-card li { padding: 3px 0; font-size: .92em; color: #57606a; }
+@media (prefers-color-scheme: dark) { .author-card li { color: #8b949e; } }
+
+footer {
+  background: #fff; border-top: 1px solid #d0d7de;
+  text-align: center; padding: 16px; font-size: .85em; color: #57606a;
+  margin-top: 40px;
+}
+@media (prefers-color-scheme: dark) { footer { color: #8b949e; } }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Hero -->
+  <div class="hero">
+    <h1>Daily-<span>AI4PDE</span></h1>
+    <p class="desc" id="hero-desc">神经网络求解偏微分方程 — 每日文献追踪系统 / Daily Paper Tracking for Neural PDE Solvers</p>
+    <div class="hero-meta">
+      <span>Author: <a href="https://github.com/xgxgnpu">xgxgnpu</a></span>
+      <span>Repos: 7</span>
+      <span>Updated: 2026-04-13</span>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" id="btn-cn" onclick="switchLang('cn')">中文</button>
+    <button class="tab-btn" id="btn-en" onclick="switchLang('en')">English</button>
+  </div>
+
+  <!-- ══════════════ 中文 ══════════════ -->
+  <div id="section-cn" class="section active">
+
+    <div class="stats">
+      <div class="stat-box"><div class="num">7</div><div class="label">追踪方向</div></div>
+      <div class="stat-box"><div class="num">400+</div><div class="label">追踪论文</div></div>
+      <div class="stat-box"><div class="num">每日</div><div class="label">自动更新</div></div>
+      <div class="stat-box"><div class="num">双语</div><div class="label">中英文切换</div></div>
+    </div>
+
+    <div class="section-title">主流方法 — 分类仓库</div>
+    <div class="cards">
+
+      <div class="card">
+        <div class="card-header"><span class="icon">📐</span><span class="repo-name">Daily-PINN</span></div>
+        <div class="card-body">
+          <div class="summary">物理信息神经网络 / Kolmogorov-Arnold 网络求解 PDE，涵盖 PINN、cPINN、KAN-PINN 等</div>
+          <div class="card-tags"><span class="tag">PINN</span><span class="tag">KAN</span><span class="tag">Physics-Informed</span><span class="tag">PDE</span></div>
+          <div class="card-links">
+            <a class="btn btn-primary" href="https://xgxgnpu.github.io/Daily-PINN/" target="_blank">在线预览</a>
+            <a class="btn btn-outline" href="https://github.com/xgxgnpu/Daily-PINN" target="_blank">GitHub</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="icon">⚡</span><span class="repo-name">Daily-ELM</span></div>
+        <div class="card-body">
+          <div class="summary">极限学习机 / 随机特征网络求解 PDE，无需反向传播，训练速度极快</div>
+          <div class="card-tags"><span class="tag">ELM</span><span class="tag">PIELM</span><span class="tag">Random Feature</span><span class="tag">RPNN</span></div>
+          <div class="card-links">
+            <a class="btn btn-primary" href="https://xgxgnpu.github.io/Daily-ELM/" target="_blank">在线预览</a>
+            <a class="btn btn-outline" href="https://github.com/xgxgnpu/Daily-ELM" target="_blank">GitHub</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="icon">🔗</span><span class="repo-name">Daily-DataDriven-NeuralOperator</span></div>
+        <div class="card-body">
+          <div class="summary">数据驱动神经算子：DeepONet、FNO、GNO 等，学习函数→函数映射</div>
+          <div class="card-tags"><span class="tag">DeepONet</span><span class="tag">FNO</span><span class="tag">Operator Learning</span></div>
+          <div class="card-links">
+            <a class="btn btn-primary" href="https://xgxgnpu.github.io/Daily-DataDriven-NeuralOperator/" target="_blank">在线预览</a>
+            <a class="btn btn-outline" href="https://github.com/xgxgnpu/Daily-DataDriven-NeuralOperator" target="_blank">GitHub</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="icon">🧲</span><span class="repo-name">Daily-PhysicsInformed-NeuralOperator</span></div>
+        <div class="card-body">
+          <div class="summary">物理信息神经算子：PI-DeepONet、PINO 等，融合物理约束的算子学习</div>
+          <div class="card-tags"><span class="tag">PI-DeepONet</span><span class="tag">PINO</span><span class="tag">PIFNO</span></div>
+          <div class="card-links">
+            <a class="btn btn-primary" href="https://xgxgnpu.github.io/Daily-PhysicsInformed-NeuralOperator/" target="_blank">在线预览</a>
+            <a class="btn btn-outline" href="https://github.com/xgxgnpu/Daily-PhysicsInformed-NeuralOperator" target="_blank">GitHub</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="icon">🏃</span><span class="repo-name">Daily-Optimizer4PINN</span></div>
+        <div class="card-body">
+          <div class="summary">PINN 优化器与深度学习二阶优化：Adam、L-BFGS、自然梯度、拟牛顿等</div>
+          <div class="card-tags"><span class="tag">Optimizer</span><span class="tag">L-BFGS</span><span class="tag">Quasi-Newton</span><span class="tag">PINN</span></div>
+          <div class="card-links">
+            <a class="btn btn-primary" href="https://xgxgnpu.github.io/Daily-Optimizer4PINN/" target="_blank">在线预览</a>
+            <a class="btn btn-outline" href="https://github.com/xgxgnpu/Daily-Optimizer4PINN" target="_blank">GitHub</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="icon">🔬</span><span class="repo-name">Daily-SingularPDE</span></div>
+        <div class="card-body">
+          <div class="summary">奇异PDE求解：PINN/PIELM/PIKAN/随机特征网络处理角点、界面、边界层奇异性</div>
+          <div class="card-tags"><span class="tag">Singular PDE</span><span class="tag">Interface</span><span class="tag">Boundary Layer</span></div>
+          <div class="card-links">
+            <a class="btn btn-primary" href="https://xgxgnpu.github.io/Daily-SingularPDE/" target="_blank">在线预览</a>
+            <a class="btn btn-outline" href="https://github.com/xgxgnpu/Daily-SingularPDE" target="_blank">GitHub</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="icon">🌐</span><span class="repo-name">Daily-HighDimPDE</span></div>
+        <div class="card-body">
+          <div class="summary">神经网络求解高维PDE：深度Galerkin/Ritz、Deep BSDE、张量网络、理论分析</div>
+          <div class="card-tags"><span class="tag">High-Dimensional</span><span class="tag">Deep BSDE</span><span class="tag">Tensor Network</span></div>
+          <div class="card-links">
+            <a class="btn btn-primary" href="https://xgxgnpu.github.io/Daily-HighDimPDE/" target="_blank">在线预览</a>
+            <a class="btn btn-outline" href="https://github.com/xgxgnpu/Daily-HighDimPDE" target="_blank">GitHub</a>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /cards -->
+
+    <div class="section-title">方法体系</div>
+    <div class="tree-block"><pre>
+神经网络求解 PDE 方法体系
+├── PINN / KAN          → Daily-PINN
+│   ├── 嵌入PDE残差到损失函数，无需标注数据
+│   └── 适用正/反问题、参数辨识
+│
+├── ELM / 随机特征       → Daily-ELM
+│   ├── 单隐层 + 随机固定权重 + 最小二乘
+│   └── 训练极快，无需反向传播
+│
+├── 数据驱动神经算子      → Daily-DataDriven-NeuralOperator
+│   ├── 学习算子映射 (function → function)
+│   └── DeepONet, FNO, GNO, U-NO
+│
+├── 物理信息神经算子      → Daily-PhysicsInformed-NeuralOperator
+│   ├── 融合物理约束的算子学习
+│   └── PI-DeepONet, PINO, PIFNO
+│
+├── PINN 优化器          → Daily-Optimizer4PINN
+│   └── Adam, L-BFGS, 自然梯度, 拟牛顿
+│
+├── 奇异PDE求解          → Daily-SingularPDE
+│   └── 角点/界面/边界层奇异性处理
+│
+└── 高维PDE求解          → Daily-HighDimPDE
+    └── Deep BSDE, Deep Ritz, 张量网络, 理论分析</pre></div>
+
+    <div class="section-title">关于作者</div>
+    <div class="author-card">
+      <h3>熊雄 (Xiong Xiong)</h3>
+      <ul>
+        <li>西北工业大学 (Northwestern Polytechnical University, NWPU)</li>
+        <li>研究方向：AI4PDE、物理信息深度学习、数据驱动发现</li>
+        <li>Email: <a href="mailto:xiongxiongnwpu@mail.nwpu.edu.cn">xiongxiongnwpu@mail.nwpu.edu.cn</a></li>
+        <li><a href="https://scholar.google.com/citations?user=j1M9tkwAAAAJ&hl=zh-CN&oi=sra" target="_blank">Google Scholar</a> ·
+            <a href="https://www.researchgate.net/profile/Xiong-Xiong-19" target="_blank">ResearchGate</a> ·
+            <a href="https://github.com/xgxgnpu/Physics-informed-vibe-coding" target="_blank">Physics-informed-vibe-coding</a></li>
+      </ul>
+    </div>
+
+  </div><!-- /section-cn -->
+
+  <!-- ══════════════ English ══════════════ -->
+  <div id="section-en" class="section">
+
+    <div class="stats">
+      <div class="stat-box"><div class="num">7</div><div class="label">Directions</div></div>
+      <div class="stat-box"><div class="num">400+</div><div class="label">Papers Tracked</div></div>
+      <div class="stat-box"><div class="num">Daily</div><div class="label">Auto-Updated</div></div>
+      <div class="stat-box"><div class="num">Bilingual</div><div class="label">CN / EN</div></div>
+    </div>
+
+    <div class="section-title">Method Categories — Repositories</div>
+    <div class="cards">
+
+      <div class="card">
+        <div class="card-header"><span class="icon">📐</span><span class="repo-name">Daily-PINN</span></div>
+        <div class="card-body">
+          <div class="summary">Physics-Informed Neural Networks & KAN for PDEs — PINN, cPINN, KAN-PINN, hp-VPINN</div>
+          <div class="card-tags"><span class="tag">PINN</span><span class="tag">KAN</span><span class="tag">Physics-Informed</span><span class="tag">PDE</span></div>
+          <div class="card-links">
+            <a class="btn btn-primary" href="https://xgxgnpu.github.io/Daily-PINN/" target="_blank">Browse Pages</a>
+            <a class="btn btn-outline" href="https://github.com/xgxgnpu/Daily-PINN" target="_blank">GitHub</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="icon">⚡</span><span class="repo-name">Daily-ELM</span></div>
+        <div class="card-body">
+          <div class="summary">Extreme Learning Machines & Random Feature Networks for PDEs — ultra-fast, no backprop</div>
+          <div class="card-tags"><span class="tag">ELM</span><span class="tag">PIELM</span><span class="tag">Random Feature</span><span class="tag">RPNN</span></div>
+          <div class="card-links">
+            <a class="btn btn-primary" href="https://xgxgnpu.github.io/Daily-ELM/" target="_blank">Browse Pages</a>
+            <a class="btn btn-outline" href="https://github.com/xgxgnpu/Daily-ELM" target="_blank">GitHub</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="icon">🔗</span><span class="repo-name">Daily-DataDriven-NeuralOperator</span></div>
+        <div class="card-body">
+          <div class="summary">Data-Driven Neural Operators: DeepONet, FNO, GNO — learning function-to-function mappings</div>
+          <div class="card-tags"><span class="tag">DeepONet</span><span class="tag">FNO</span><span class="tag">Operator Learning</span></div>
+          <div class="card-links">
+            <a class="btn btn-primary" href="https://xgxgnpu.github.io/Daily-DataDriven-NeuralOperator/" target="_blank">Browse Pages</a>
+            <a class="btn btn-outline" href="https://github.com/xgxgnpu/Daily-DataDriven-NeuralOperator" target="_blank">GitHub</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="icon">🧲</span><span class="repo-name">Daily-PhysicsInformed-NeuralOperator</span></div>
+        <div class="card-body">
+          <div class="summary">Physics-Informed Neural Operators: PI-DeepONet, PINO — physics-constrained operator learning</div>
+          <div class="card-tags"><span class="tag">PI-DeepONet</span><span class="tag">PINO</span><span class="tag">PIFNO</span></div>
+          <div class="card-links">
+            <a class="btn btn-primary" href="https://xgxgnpu.github.io/Daily-PhysicsInformed-NeuralOperator/" target="_blank">Browse Pages</a>
+            <a class="btn btn-outline" href="https://github.com/xgxgnpu/Daily-PhysicsInformed-NeuralOperator" target="_blank">GitHub</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="icon">🏃</span><span class="repo-name">Daily-Optimizer4PINN</span></div>
+        <div class="card-body">
+          <div class="summary">PINN Optimizers & Deep Learning 2nd-order Optimization — Adam, L-BFGS, Natural Gradient</div>
+          <div class="card-tags"><span class="tag">Optimizer</span><span class="tag">L-BFGS</span><span class="tag">Quasi-Newton</span></div>
+          <div class="card-links">
+            <a class="btn btn-primary" href="https://xgxgnpu.github.io/Daily-Optimizer4PINN/" target="_blank">Browse Pages</a>
+            <a class="btn btn-outline" href="https://github.com/xgxgnpu/Daily-Optimizer4PINN" target="_blank">GitHub</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="icon">🔬</span><span class="repo-name">Daily-SingularPDE</span></div>
+        <div class="card-body">
+          <div class="summary">Singular PDEs: PINN/PIELM/PIKAN/Random Feature Networks for corner, interface & boundary layer singularities</div>
+          <div class="card-tags"><span class="tag">Singular PDE</span><span class="tag">Interface</span><span class="tag">Boundary Layer</span></div>
+          <div class="card-links">
+            <a class="btn btn-primary" href="https://xgxgnpu.github.io/Daily-SingularPDE/" target="_blank">Browse Pages</a>
+            <a class="btn btn-outline" href="https://github.com/xgxgnpu/Daily-SingularPDE" target="_blank">GitHub</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="icon">🌐</span><span class="repo-name">Daily-HighDimPDE</span></div>
+        <div class="card-body">
+          <div class="summary">High-Dimensional PDEs: Deep Galerkin/Ritz, Deep BSDE, Tensor Networks, Approximation Theory</div>
+          <div class="card-tags"><span class="tag">High-Dimensional</span><span class="tag">Deep BSDE</span><span class="tag">Tensor Network</span></div>
+          <div class="card-links">
+            <a class="btn btn-primary" href="https://xgxgnpu.github.io/Daily-HighDimPDE/" target="_blank">Browse Pages</a>
+            <a class="btn btn-outline" href="https://github.com/xgxgnpu/Daily-HighDimPDE" target="_blank">GitHub</a>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /cards -->
+
+    <div class="section-title">Method Taxonomy</div>
+    <div class="tree-block"><pre>
+Neural Network Methods for Solving PDEs
+├── PINN / KAN              → Daily-PINN
+│   ├── Embed PDE residuals in loss (no labeled data)
+│   └── Forward/inverse problems, parameter identification
+│
+├── ELM / Random Features   → Daily-ELM
+│   ├── Single hidden layer + random fixed weights + least squares
+│   └── Ultra-fast training, no backpropagation
+│
+├── Data-Driven Neural Ops  → Daily-DataDriven-NeuralOperator
+│   ├── Learn operator mappings (function → function)
+│   └── DeepONet, FNO, GNO, U-NO
+│
+├── Physics-Informed Neural Ops → Daily-PhysicsInformed-NeuralOperator
+│   ├── Physics-constrained operator learning
+│   └── PI-DeepONet, PINO, PIFNO
+│
+├── PINN Optimizers         → Daily-Optimizer4PINN
+│   └── Adam, L-BFGS, Natural Gradient, Quasi-Newton
+│
+├── Singular PDEs           → Daily-SingularPDE
+│   └── Corner/interface/boundary-layer singularities
+│
+└── High-Dimensional PDEs   → Daily-HighDimPDE
+    └── Deep BSDE, Deep Ritz, Tensor Networks, Theory</pre></div>
+
+    <div class="section-title">About the Author</div>
+    <div class="author-card">
+      <h3>Xiong Xiong (熊雄)</h3>
+      <ul>
+        <li>Northwestern Polytechnical University (NWPU)</li>
+        <li>Research: AI4PDE, Physics-Informed Deep Learning, Data-Driven Discovery</li>
+        <li>Email: <a href="mailto:xiongxiongnwpu@mail.nwpu.edu.cn">xiongxiongnwpu@mail.nwpu.edu.cn</a></li>
+        <li><a href="https://scholar.google.com/citations?user=j1M9tkwAAAAJ&hl=zh-CN&oi=sra" target="_blank">Google Scholar</a> ·
+            <a href="https://www.researchgate.net/profile/Xiong-Xiong-19" target="_blank">ResearchGate</a> ·
+            <a href="https://github.com/xgxgnpu/Physics-informed-vibe-coding" target="_blank">Physics-informed-vibe-coding</a></li>
+      </ul>
+    </div>
+
+  </div><!-- /section-en -->
+
+</div><!-- /container -->
+
+<footer>
+  <p>Daily-AI4PDE &nbsp;·&nbsp; <a href="https://github.com/xgxgnpu/Daily-AI4PDE">GitHub</a> &nbsp;·&nbsp; Auto-generated paper tracker for Neural PDE Solvers</p>
+</footer>
+
+<script>
+function switchLang(lang) {
+  document.getElementById('section-cn').classList.toggle('active', lang === 'cn');
+  document.getElementById('section-en').classList.toggle('active', lang === 'en');
+  document.getElementById('btn-cn').classList.toggle('active', lang === 'cn');
+  document.getElementById('btn-en').classList.toggle('active', lang === 'en');
+}
+</script>
+</body>
+</html>
